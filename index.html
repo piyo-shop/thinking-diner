@@ -832,7 +832,8 @@ JSON만 출력: {"title":"...","body":"..."}  (body는 줄바꿈이 들어간 �
 }
 $("wrapBtn").addEventListener("click", wrapUp);
 $("noWrapBtn").addEventListener("click", () => { S.pkg = plainPackage(); S.phase="done"; save(); render(); say("포장 없이 그대로 담아 뒀어요."); });
-function pkgText(){ return S.pkg ? `${S.pkg.title}\n\n${S.pkg.body}` : ""; }
+var SIGN = "\n\n─────────\n🍳 생각식당에서 포장해 드렸어요\n병아리 상점가 · piyo-shop.github.io\n인스타그램 @piyo.ai.shop";
+function pkgText(){ return S.pkg ? `${S.pkg.title}\n\n${S.pkg.body}${SIGN}` : ""; }
 async function copyText(t){
   try { await navigator.clipboard.writeText(t); return true; } catch(e){}
   try { const ta = el("textarea"); ta.value = t; ta.style.position="fixed"; ta.style.opacity="0"; document.body.append(ta); ta.select(); const ok = document.execCommand("copy"); ta.remove(); return ok; } catch(e){ return false; }
@@ -880,8 +881,8 @@ function render(){
     $("parcelBox").hidden = ph!=="done" || !S.pkg;
     if (S.pkg){
       $("pkTitle").textContent = S.pkg.title; $("pkBody").textContent = S.pkg.body;
-      $("mailBtn").href = "mailto:?subject=" + encodeURIComponent(S.pkg.title) + "&body=" + encodeURIComponent(S.pkg.body);
-      $("gmailBtn").href = "https://mail.google.com/mail/?view=cm&fs=1&su=" + encodeURIComponent(S.pkg.title) + "&body=" + encodeURIComponent(S.pkg.body);
+      $("mailBtn").href = "mailto:?subject=" + encodeURIComponent(S.pkg.title) + "&body=" + encodeURIComponent(S.pkg.body + SIGN);
+      $("gmailBtn").href = "https://mail.google.com/mail/?view=cm&fs=1&su=" + encodeURIComponent(S.pkg.title) + "&body=" + encodeURIComponent(S.pkg.body + SIGN);
     }
     if (ph==="wrap" && none) say("하나도 안 남기고 다 태웠네요. 홀가분하죠?");
     else if (ph==="wrap") say("다 골랐어요! 남은 건 포장해 드릴까요?");
