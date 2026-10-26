@@ -177,6 +177,15 @@ body.demo .slips{max-height:none; overflow:visible}
 .demo-go{position:fixed; left:50%; bottom:calc(22px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%); z-index:20; white-space:nowrap}
 @media (prefers-reduced-motion:reduce){*{animation:none !important}}
 @media (max-width:420px){h1{font-size:25px}.win{padding:12px}}
+/* ---- 할로윈 시즌 (10/30~11/1 KST, ?season=halloween 로 미리보기) ---- */
+:root[data-season="halloween"]{
+  --bg:#1d1430; --bg-dot:#2c1f4a;
+  --ink:#fff1dc; --muted:#c3a8e8;
+  --win-top:#4b2c7a; --win-bot:#2a1748; --win-ink:#fff6e6; --win-dim:#d7c3f2; --win-edge:#ffb35c; --win-rim:#0e0718;
+  --gold:#ff8a1f; --focus:#ff8a1f;
+  color-scheme:dark;
+}
+:root[data-season="halloween"] canvas{background:#2a1a46}
 </style>
 </head>
 <body>
@@ -420,6 +429,15 @@ function say(text){
 }
 
 /* ---------- pixel stage ---------- */
+const HW = (() => {
+  if (/[?&]season=halloween/.test(location.search)) return true;
+  if (/[?&]season=off/.test(location.search)) return false;
+  const k = new Date(Date.now() + 9*3600e3);
+  const ymd = k.getUTCFullYear()*10000 + (k.getUTCMonth()+1)*100 + k.getUTCDate();
+  return ymd >= 20261030 && ymd <= 20261101;
+})();
+if (HW){ document.documentElement.dataset.season = "halloween";
+  const tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.content = "#4b2c7a"; }
 const cv = $("cv"), g = cv.getContext("2d");
 g.imageSmoothingEnabled = false;
 const W = 200, H = 96, FLOOR = 78;
@@ -453,10 +471,15 @@ function drawChef(x,y,{walk=0,blink=false,flip=false}={}){
       px(x+dx, y+ry, 1, 1, PAL[c]);
     }
   });
+  if (HW){ // pumpkin-soup chef toque
+    px(x+3,y+1,10,1,"#ff8a1f");
+    px(x+3,y-3,10,4,"#ffffff"); px(x+12,y-3,1,4,"#d9dbe8");
+    px(x+4,y-5,3,2,"#ffffff"); px(x+8,y-5,4,2,"#ffffff"); px(x+11,y-5,1,2,"#d9dbe8");
+  }
 }
 function drawBG(t){
-  px(0,0,W,48,"#f0d29a");
-  for (let x=4;x<W;x+=10) px(x,0,1,46,"#e5c283");
+  px(0,0,W,48,HW?"#3b2560":"#f0d29a");
+  for (let x=4;x<W;x+=10) px(x,0,1,46,HW?"#33204f":"#e5c283");
   px(0,46,W,2,"#6e3c1f"); px(0,48,W,FLOOR-48,"#a9653b");
   for (let x=0;x<W;x+=12) px(x,48,1,FLOOR-48,"#8c4f2c");
   // menu board
@@ -465,7 +488,7 @@ function drawBG(t){
   [15,19,23,27].forEach((y,i)=>{ px(17,y,12+((i*5)%9),1,"#b9cdbf"); px(44,y,5,1,"#f5b731"); });
   // pendant lamps
   [96,138].forEach(x=>{ px(x,0,1,8,"#3a2414"); px(x-4,8,9,3,"#d2553c"); px(x-5,11,11,1,"#9e3a26"); px(x-1,12,3,2,"#fff3b0");
-    g.fillStyle="rgba(255,240,170,.22)"; g.fillRect(x-10,14,21,3); });
+    g.fillStyle=HW?"rgba(255,150,60,.30)":"rgba(255,240,170,.22)"; g.fillRect(x-10,14,21,3); });
   // wood floor
   px(0,FLOOR,W,H-FLOOR,"#8a5530");
   for (let y=FLOOR+5;y<H;y+=5) px(0,y,W,1,"#73452a");
@@ -481,6 +504,35 @@ function drawBG(t){
   for (let y=41,r=0;y<79;y+=5,r++){ px(158,y,34,1,"#8e3b28"); for (let x=158+(r%2)*5;x<192;x+=10) px(x,y-4,1,4,"#8e3b28"); }
   px(168,62,17,15,"#2a1410"); px(170,60,13,2,"#2a1410"); px(172,58,9,2,"#2a1410");
   px(165,76,23,2,"#6e2c1d");
+  if (HW) drawHalloween(t);
+}
+function jack(x,y){
+  px(x+4,y,2,2,"#3d7a28"); px(x+1,y+2,8,6,"#f28c28"); px(x,y+3,10,4,"#f28c28");
+  px(x+3,y+2,1,6,"#c95f16"); px(x+6,y+2,1,6,"#c95f16");
+  px(x+2,y+4,2,1,"#ffe066"); px(x+6,y+4,2,1,"#ffe066"); px(x+3,y+6,4,1,"#ffe066");
+}
+function drawHalloween(t){
+  // moon window
+  px(62,8,22,22,"#6b4423"); px(64,10,18,18,"#1a1238");
+  px(76,11,3,1,"#fff1a8"); px(75,12,5,3,"#fff1a8"); px(76,15,3,1,"#fff1a8"); px(78,11,1,1,"#1a1238"); px(78,12,2,3,"#1a1238"); px(78,15,1,1,"#1a1238");
+  px(66,22,1,1,"#ffffff"); px(79,25,1,1,"#ffffff"); px(68,14,1,1,"#c9c2ff");
+  px(72,10,1,18,"#6b4423"); px(64,18,18,1,"#6b4423");
+  // bunting
+  const cols=["#ff8a1f","#7b4fc4","#ffe066","#1b1430"];
+  px(0,1,W,1,"#1b1430");
+  for (let x=2,i=0;x<W-4;x+=7,i++){ const c=cols[i%4]; px(x,2,5,1,c); px(x+1,3,3,1,c); px(x+2,4,1,1,c); }
+  // cobweb
+  g.fillStyle="rgba(230,225,255,.55)";
+  for (let i=0;i<10;i++){ g.fillRect(i,7+i,1,1); g.fillRect(0,7+i*1.2,i,1); }
+  g.fillRect(0,6,1,12); g.fillRect(0,6,12,1);
+  // bat
+  const bx = 120 + Math.round(Math.sin(t*1.3)*10), by = 22 + Math.round(Math.sin(t*2.1)*2);
+  const up = Math.floor(t*6)%2===0;
+  px(bx,by,3,2,"#2a1a3e"); px(bx+1,by+1,1,1,"#ffe066");
+  if (up){ px(bx-3,by-1,3,1,"#2a1a3e"); px(bx+3,by-1,3,1,"#2a1a3e"); }
+  else { px(bx-3,by+1,3,1,"#2a1a3e"); px(bx+3,by+1,3,1,"#2a1a3e"); }
+  // pumpkins
+  jack(90,58); jack(140,70); jack(4,70);
 }
 function drawFire(cx, h, t){
   if (h <= 0.5) return;
@@ -936,7 +988,7 @@ function setupDemo(){
   go.addEventListener("click", async () => { go.hidden = true; await wait(1200); runDemo(); }, { once:true });
 }
 async function runDemo(){
-  say("어서 오세요, 생각식당이에요! 머릿속에 있는 거 아무거나 주문해 주세요.");
+  say(HW ? "해피 할로윈! 생각식당이에요. 무서운 생각도 다 주문해 주세요." : "어서 오세요, 생각식당이에요! 머릿속에 있는 거 아무거나 주문해 주세요.");
   await wait(1800);
   for (const t of DEMO_THOUGHTS) await typeIn(t);
   await wait(500);
@@ -968,7 +1020,7 @@ async function runDemo(){
 }
 render();
 if (DEMO) setupDemo();
-else if (S.phase==="dump" && !S.thoughts.length) say("어서 오세요, 생각식당이에요! 머릿속에 있는 거 아무거나 주문해 주세요.");
+else if (S.phase==="dump" && !S.thoughts.length) say(HW ? "해피 할로윈! 생각식당이에요. 무서운 생각도 다 주문해 주세요." : "어서 오세요, 생각식당이에요! 머릿속에 있는 거 아무거나 주문해 주세요.");
 else if (S.phase==="dump") say("아까 주문하던 거 그대로 있어요. 이어서 해요.");
 })();
 </script>
