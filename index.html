@@ -289,8 +289,9 @@ body.demo .slips{max-height:none; overflow:visible}
 const KEY = "thinking-diner-v1";
 const COLORS = ["#5ec2e8","#f5b731","#8bd36a","#f28cc1","#b49cff","#ff9b54","#7fe0c7","#e8e07a"];
 let S = { phase:"dump", thoughts:[], flow:"", groups:[], pkg:null, burned:0, seq:0 };
-const liveHash = location.hash.match(/^#demo-live(?:-(\d+))?$/);
-const LIVE = liveHash ? (liveHash[1] || "1") : null; // #demo-live, #demo-live-2: 녹화 때만 실제 삐쿡 대답
+const liveHash = location.hash.match(/^#demo-(live|replay)(?:-(\d+))?$/);
+const LIVE = liveHash ? (liveHash[2] || "1") : null; // #demo-live, #demo-live-2: 녹화 때만 실제 삐쿡 대답
+const REPLAY = !!liveHash && liveHash[1] === "replay"; // #demo-replay-2: 실제로 받았던 대답을 다시 재생 (API 안 부름)
 const DEMO = location.hash === "#demo" || !!LIVE;
 if (!DEMO) { try { const raw = localStorage.getItem(KEY); if (raw) S = Object.assign(S, JSON.parse(raw)); } catch(e) {} }
 const save = () => { if (DEMO) return; try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {} };
@@ -1040,6 +1041,10 @@ const LIVE_SETS = {
   "1": ["내일 발표가 너무 떨려요", "준비를 덜 한 것 같아요"],
   "2": ["요즘 아무것도 하기 싫어요", "나만 제자리인 것 같아요"]
 };
+/* 삐쿡이 실제로 했던 대답 (#demo-replay-N 에서 그대로 다시 보여 줌) */
+const REPLAY_REPLIES = {
+  "2": "무기력하고 나만 멈춰 있는 것 같은 마음이 참 무겁겠어요. 그럴 땐 아무것도 안 해도 괜찮으니, 오늘은 몸과 마음을 잠깐 쉬게 해 줘요, 삐약! 🐥"
+};
 async function runLiveDemo(){
   const set = LIVE_SETS[LIVE] || LIVE_SETS["1"];
   say(HW ? "해피 할로윈! 생각식당이에요. 무서운 생각도 다 주문해 주세요." : "어서 오세요, 생각식당이에요! 머릿속에 있는 거 아무거나 주문해 주세요.");
@@ -1051,7 +1056,8 @@ async function runLiveDemo(){
   startPlating();
   scrollTo({ top:0, behavior: reduce ? "auto" : "smooth" });
   thinking = true; say("삐쿡이 요리 중… 🍳");
-  const [reply] = await Promise.all([askPiyoChef(set.join("\n")), wait(2200)]);
+  const ask = REPLAY && REPLAY_REPLIES[LIVE] ? Promise.resolve(REPLAY_REPLIES[LIVE]) : askPiyoChef(set.join("\n"));
+  const [reply] = await Promise.all([ask, wait(REPLAY ? 2800 : 2200)]);
   thinking = false; say(reply);
   while ($("talk").classList.contains("typing")) await wait(100);
   await wait(3000);
