@@ -289,7 +289,9 @@ body.demo .slips{max-height:none; overflow:visible}
 const KEY = "thinking-diner-v1";
 const COLORS = ["#5ec2e8","#f5b731","#8bd36a","#f28cc1","#b49cff","#ff9b54","#7fe0c7","#e8e07a"];
 let S = { phase:"dump", thoughts:[], flow:"", groups:[], pkg:null, burned:0, seq:0 };
-const DEMO = location.hash === "#demo";
+const liveHash = location.hash.match(/^#demo-live(?:-(\d+))?$/);
+const LIVE = liveHash ? (liveHash[1] || "1") : null; // #demo-live, #demo-live-2: 녹화 때만 실제 삐쿡 대답
+const DEMO = location.hash === "#demo" || !!LIVE;
 if (!DEMO) { try { const raw = localStorage.getItem(KEY); if (raw) S = Object.assign(S, JSON.parse(raw)); } catch(e) {} }
 const save = () => { if (DEMO) return; try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {} };
 
@@ -328,6 +330,7 @@ const SFX = (() => {
   const api = {
     audio(){ return ac(); },
     blip(){ tone(988, 0, 0.05, { vol:0.035 }); },
+    tick(){ tone(1180 + Math.random()*160, 0, 0.018, { vol:0.009 }); },
     order(){ tone(1568, 0, 0.55, { type:"triangle", vol:0.13 }); tone(2093, 0.16, 0.7, { type:"triangle", vol:0.11 }); },
     mark(){ tone(330, 0, 0.09, { to:200, vol:0.05 }); },
     keep(){ [523,659,784].forEach((f,i) => tone(f, i*0.075, 0.12, { type:"triangle", vol:0.09 })); },
@@ -425,7 +428,9 @@ function say(text){
   el.textContent = ""; el.classList.add("typing");
   let i = 0; const chars = [...text];
   typeTimer = setInterval(() => {
-    el.textContent += chars[i++] || "";
+    const ch = chars[i++] || "";
+    el.textContent += ch;
+    if (DEMO && /[가-힣A-Za-z0-9]/.test(ch)) SFX.tick(); // 대화창 톡톡 (지금은 녹화용 데모에서만)
     if (i >= chars.length) { clearInterval(typeTimer); el.classList.remove("typing"); }
   }, 32);
 }
@@ -997,7 +1002,7 @@ async function demoMark(name, texts, keepLabel){
 function setupDemo(){
   document.body.classList.add("demo");
   const go = $("demoStart"); go.hidden = false;
-  go.addEventListener("click", async () => { go.hidden = true; await wait(1200); runDemo(); }, { once:true });
+  go.addEventListener("click", async () => { go.hidden = true; await wait(1200); LIVE ? runLiveDemo() : runDemo(); }, { once:true });
 }
 async function runDemo(){
   say(HW ? "해피 할로윈! 생각식당이에요. 무서운 생각도 다 주문해 주세요." : "어서 오세요, 생각식당이에요! 머릿속에 있는 거 아무거나 주문해 주세요.");
@@ -1029,6 +1034,28 @@ async function runDemo(){
   await wait(600); into($("parcelBox"));
   await wait(2600);
   say("오늘도 잘 먹었습니다!");
+}
+/* 릴스 녹화용: 고민 2개 주문 → 차려 주세요 → 요리 중… → 실제 삐쿡 대답 → 3초 머무르기 */
+const LIVE_SETS = {
+  "1": ["내일 발표가 너무 떨려요", "준비를 덜 한 것 같아요"],
+  "2": ["요즘 아무것도 하기 싫어요", "나만 제자리인 것 같아요"]
+};
+async function runLiveDemo(){
+  const set = LIVE_SETS[LIVE] || LIVE_SETS["1"];
+  say(HW ? "해피 할로윈! 생각식당이에요. 무서운 생각도 다 주문해 주세요." : "어서 오세요, 생각식당이에요! 머릿속에 있는 거 아무거나 주문해 주세요.");
+  await wait(1800);
+  for (const t of set) await typeIn(t);
+  await wait(600);
+  const sb = $("sortBtn"); into(sb); await wait(500); press(sb); SFX.order();
+  await wait(300);
+  startPlating();
+  scrollTo({ top:0, behavior: reduce ? "auto" : "smooth" });
+  thinking = true; say("삐쿡이 요리 중… 🍳");
+  const [reply] = await Promise.all([askPiyoChef(set.join("\n")), wait(2200)]);
+  thinking = false; say(reply);
+  while ($("talk").classList.contains("typing")) await wait(100);
+  await wait(3000);
+  document.body.dataset.demoReply = reply; document.body.dataset.demoDone = "1";
 }
 render();
 if (DEMO) setupDemo();
