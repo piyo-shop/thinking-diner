@@ -216,6 +216,7 @@ body.demo .slips{max-height:none; overflow:visible}
       <button class="btn" id="sortBtn" type="button" disabled>다 시켰어요, 차려 주세요</button>
       <button class="btn burn" id="clearBtn" type="button" hidden>처음부터</button>
     </div>
+    <p class="note">주문서는 삐쿡에게 전달돼 위로 한마디를 만드는 데만 쓰이고, 어디에도 저장되지 않아요. 이름 같은 개인정보는 빼고 적어 주세요. 🐣</p>
   </section>
 
   <!-- 1.5 접시 나누기 -->
@@ -280,6 +281,7 @@ body.demo .slips{max-height:none; overflow:visible}
 </div>
 <button class="btn solid demo-go" id="demoStart" type="button" hidden>녹화를 켠 뒤 눌러서 시작</button>
 
+<script src="piyo-chef.js"></script>
 <script>
 (() => {
 "use strict";
@@ -726,6 +728,16 @@ function startPlating(){
   S.phase = "plate"; S.pkg = null; save(); nextSel(); render();
   say(S.groups.length ? "새 주문도 접시에 담아 주세요." : "접시를 나눠 볼까요? 생각을 누르고 담을 접시를 골라 주세요.");
 }
+/* 주문서를 삐쿡에게 보내고 위로 한마디 받기 (piyo-chef.js) */
+let chefTurn = 0;
+async function askChef(){
+  if (typeof askPiyoChef !== "function" || !S.thoughts.length) return;
+  const turn = ++chefTurn;
+  thinking = true; say("삐쿡이 요리 중… 🍳");
+  const reply = await askPiyoChef(S.thoughts.map(t=>t.text).join("\n"));
+  if (turn !== chefTurn) return;
+  thinking = false; say(reply);
+}
 function addPlate(name){
   name = String(name||"").trim().slice(0,16);
   if (!name) return;
@@ -790,7 +802,7 @@ $("plateName").addEventListener("keydown", e => { if (e.key==="Enter" && !e.isCo
 $("platedBtn").addEventListener("click", ()=>finishPlating(false));
 $("onePlateBtn").addEventListener("click", ()=>finishPlating(true));
 $("plateBackBtn").addEventListener("click", ()=>{ S.phase="dump"; save(); render(); say("추가 주문 받습니다! 얼마든지 시켜 주세요."); });
-$("sortBtn").addEventListener("click", ()=>{ if (DEMO) return; startPlating(); });
+$("sortBtn").addEventListener("click", ()=>{ if (DEMO) return; startPlating(); askChef(); });
 $("sortBtn").addEventListener("click", () => SFX.order());
 $("backBtn").addEventListener("click", () => { S.phase="dump"; save(); render(); say("추가 주문 받습니다! 얼마든지 시켜 주세요."); inp.focus(); });
 
