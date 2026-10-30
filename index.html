@@ -222,6 +222,10 @@ body.demo .slips{max-height:none; overflow:visible}
   transform:translate(-50%,-50%) rotate(var(--r,-8deg)); background:rgba(210,60,50,.08) var(--chick) center/62% no-repeat;
   image-rendering:pixelated; opacity:.88; mix-blend-mode:multiply}
 .day.has::after{display:none}
+.day .stamp.bang{animation:bang .45s steps(4)}
+@keyframes bang{0%{transform:translate(-50%,-50%) rotate(var(--r,-8deg)) scale(2.6); opacity:0}
+  60%{transform:translate(-50%,-50%) rotate(var(--r,-8deg)) scale(.88); opacity:1}}
+.daycard.open > *{animation:drop .3s steps(3) both}
 .daycard{margin-top:14px}
 .daycard h3{margin:0 0 6px; font-size:16px}
 .daysec{margin:10px 0 0}
@@ -384,7 +388,8 @@ let S = { phase:"dump", thoughts:[], flow:"", groups:[], pkg:null, burned:0, seq
 const liveHash = location.hash.match(/^#demo-(live|replay)(?:-(\d+))?$/);
 const LIVE = liveHash ? (liveHash[2] || "1") : null; // #demo-live, #demo-live-2: 녹화 때만 실제 삐쿡 대답
 const REPLAY = !!liveHash && liveHash[1] === "replay"; // #demo-replay-2: 실제로 받았던 대답을 다시 재생 (API 안 부름)
-const DEMO = location.hash === "#demo" || !!LIVE;
+const LEDGER_DEMO = location.hash === "#demo-ledger"; // 단골 장부 소개 릴스용 (가짜 기록, 저장 안 함)
+const DEMO = location.hash === "#demo" || !!LIVE || LEDGER_DEMO;
 if (!DEMO) { try { const raw = localStorage.getItem(KEY); if (raw) S = Object.assign(S, JSON.parse(raw)); } catch(e) {} }
 const save = () => { if (DEMO) return; try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {} };
 /* ---------- 단골 장부 저장 (좋은·번뜩 생각, 삐쿡 한마디, 태운 개수 — 이 기기 브라우저에만) ---------- */
@@ -445,6 +450,7 @@ const SFX = (() => {
     audio(){ return ac(); },
     blip(){ tone(988, 0, 0.05, { vol:0.035 }); },
     tick(){ tone(1180 + Math.random()*160, 0, 0.018, { vol:0.009 }); },
+    stamp(){ noise(0, 0.16, { from:1200, to:90, vol:0.3 }); tone(120, 0, 0.14, { type:"triangle", to:55, vol:0.14 }); },
     order(){ tone(1568, 0, 0.55, { type:"triangle", vol:0.13 }); tone(2093, 0.16, 0.7, { type:"triangle", vol:0.11 }); },
     mark(){ tone(330, 0, 0.09, { to:200, vol:0.05 }); },
     keep(){ [523,659,784].forEach((f,i) => tone(f, i*0.075, 0.12, { type:"triangle", vol:0.09 })); },
@@ -1117,7 +1123,7 @@ function render(){
 }
 
 /* ---------- 단골 장부 화면 ---------- */
-let bookOpen = false, calY = 0, calM = 0, selKey = null;
+let bookOpen = false, calY = 0, calM = 0, selKey = null, stampHold = null, stampBang = null;
 const WD = ["일","월","화","수","목","금","토"];
 const KIND_LABEL = { good:"🌱 좋은 생각", spark:"⚡ 번뜩 생각", chef:"🐥 삐쿡 한마디" };
 // 쿠폰 도장: 병아리 픽셀 그림을 도장 잉크 한 색으로
@@ -1146,13 +1152,13 @@ function renderBook(){
   for (let i=0;i<first;i++) cal.append(el("span",{class:"day blank","aria-hidden":"true"}));
   let stamps = 0;
   for (let d=1; d<=last; d++){
-    const key = `${calY}-${pad2(calM+1)}-${pad2(d)}`, rec = hasRecord(B.days[key]), future = key > today;
+    const key = `${calY}-${pad2(calM+1)}-${pad2(d)}`, rec = hasRecord(B.days[key]) && key !== stampHold, future = key > today;
     if (rec) stamps++;
     const b = el("button",{type:"button", class:"day"+(rec?" has":"")+(future?" future":"")+(key===today?" today":"")+(key===selKey?" sel":""),
       "aria-label":`${calM+1}월 ${d}일${rec?", 도장 있음":""}`, "aria-pressed":String(key===selKey), text:String(d)});
     if (future) b.disabled = true;
     else b.addEventListener("click", () => { selKey = key; SFX.blip(); renderBook(); });
-    if (rec){ const st = el("span",{class:"stamp","aria-hidden":"true"}); st.style.setProperty("--r", `${(d*37)%17-8}deg`); b.append(st); }
+    if (rec){ const st = el("span",{class:"stamp"+(key===stampBang?" bang":""),"aria-hidden":"true"}); st.style.setProperty("--r", `${(d*37)%17-8}deg`); b.append(st); }
     cal.append(b);
   }
   $("calCount").textContent = stamps ? `이번 달 도장 ${stamps}개` : "이번 달은 아직 도장이 없어요";
@@ -1290,9 +1296,9 @@ async function demoMark(name, texts, keepLabel){
   await wait(900);
 }
 function setupDemo(){
-  document.body.classList.add("demo"); $("bookBtn").hidden = true;
+  document.body.classList.add("demo"); $("bookBtn").hidden = !LEDGER_DEMO;
   const go = $("demoStart"); go.hidden = false;
-  go.addEventListener("click", async () => { go.hidden = true; await wait(1200); LIVE ? runLiveDemo() : runDemo(); }, { once:true });
+  go.addEventListener("click", async () => { go.hidden = true; await wait(1200); LEDGER_DEMO ? runLedgerDemo() : LIVE ? runLiveDemo() : runDemo(); }, { once:true });
 }
 async function runDemo(){
   say(HW ? "해피 할로윈! 생각식당이에요. 무서운 생각도 다 주문해 주세요." : "어서 오세요, 생각식당이에요! 머릿속에 있는 거 아무거나 주문해 주세요.");
@@ -1351,6 +1357,49 @@ async function runLiveDemo(){
   while ($("talk").classList.contains("typing")) await wait(100);
   await wait(3000);
   document.body.dataset.demoReply = reply; document.body.dataset.demoDone = "1";
+}
+/* 단골 장부 소개 릴스용: 잡생각·좋은 생각·번뜩 생각 주문 → 잡생각 태우기 → 삐쿡 한마디(실제 대답 재생) → 장부에 도장 쾅 → 오늘 카드 */
+const LEDGER_DEMO_REPLY = "내일 회의가 걱정되는 마음, 그만큼 잘해 내고 싶다는 뜻이겠죠. 오늘은 따뜻하게 쉬면서 마음을 조금 놓아 봐요, 삐약! 🐥";
+function seedDemoBook(){
+  const sample = [[1,"good","퇴근길 노을이 예뻤다",0],[2,"spark","스티커에 계절 테마 넣기",2],[4,"good","친구가 먼저 연락해 줬다",1],[6,"",null,3],[9,"good","산책하고 머리가 맑아졌다",0]];
+  sample.forEach(([ago, kind, text, burned]) => {
+    const t = Date.now() - ago*864e5, d = bookDay(dayKey(t), true);
+    if (kind) d[kind].push({ id:uid(), text, t }); d.burned += burned;
+  });
+}
+async function pickKind(kind){
+  const b = $("kinds").querySelector(`[data-kind="${kind}"]`); press(b); b.click(); await wait(450);
+}
+async function runLedgerDemo(){
+  seedDemoBook();
+  say(HW ? "해피 할로윈! 생각 종류를 골라 주문해 보세요." : "어서 오세요! 생각 종류를 골라 주문해 보세요.");
+  await wait(1300);
+  await typeIn("내일 회의 너무 걱정돼"); await wait(300);
+  await pickKind("good"); await typeIn("오늘 노을이 예뻤다"); await wait(600);
+  await pickKind("spark"); await typeIn("주말에 스티커 만들어 보기"); await wait(600);
+  await pickKind("junk");
+  const sb = $("sortBtn"); into(sb); await wait(500); press(sb); SFX.order(); await wait(300);
+  S.thoughts = S.thoughts.filter(isJunk); startPlating(); finishPlating(true);
+  scrollTo({ top:0, behavior: reduce ? "auto" : "smooth" });
+  say("좋은 생각·번뜩 생각은 장부에 적어 뒀어요. 잡생각은 태워 드릴게요!"); await wait(1700);
+  const sec = secOf("내 생각"); into(sec); await wait(500);
+  press(btnIn(sec, "쓰레기")); await wait(250);
+  await decide(S.groups[0], false); await wait(600);
+  scrollTo({ top:0, behavior: reduce ? "auto" : "smooth" });
+  thinking = true; say("삐쿡이 요리 중… 🍳"); await wait(2000);
+  thinking = false; say(LEDGER_DEMO_REPLY); bookChef(LEDGER_DEMO_REPLY);
+  while ($("talk").classList.contains("typing")) await wait(100);
+  await wait(900);
+  const bb = $("bookBtn"); press(bb); await wait(250);
+  stampHold = dayKey(); openBook(); selKey = null; renderBook(); await wait(400);
+  into(document.querySelector(".coupon")); await wait(1100);
+  stampHold = null; stampBang = dayKey(); renderBook(); SFX.stamp();
+  say("오늘도 도장 쾅! 단골 장부에 잘 적어 뒀어요. 📒"); await wait(1400);
+  stampBang = null; selKey = dayKey(); renderBook(); SFX.blip();
+  const card = $("dayCard"); card.classList.add("open"); into(card);
+  while ($("talk").classList.contains("typing")) await wait(100);
+  await wait(3000);
+  document.body.dataset.demoReply = LEDGER_DEMO_REPLY; document.body.dataset.demoDone = "1";
 }
 render();
 if (DEMO) setupDemo();
